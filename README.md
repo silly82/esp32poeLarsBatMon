@@ -12,7 +12,8 @@ and MQTT.
       Ethernet over SPI: CLK=13 MISO=12 MOSI=11 CS=14 IRQ=10 RST=9. PoE via
       optional 802.3af module on the board.
 - [x] Battery: **Redodo Power** 12.8V/100Ah LiFePO4, model RH190, alias
-      "R-12100BNNH19-C01278", MAC `xx:xx:xx:xx:xx:xx` (redacted). BLE GATT service
+      "R-12100BNNH19-C01278", MAC in `include/secrets.h` (gitignored, see
+      Verwendung below). BLE GATT service
       `0xFFE0`, notify on `0xFFE1`, write on `0xFFE2`.
 - [x] Ethernet (W5500) + MQTT (PubSubClient) working end-to-end. Retained
       heartbeat on `LiFePo01/status` (IP, uptime, free heap,
@@ -108,11 +109,21 @@ shell (needs a real TTY) — use a plain `pyserial` read loop instead, or run
 ## Hardware
 
 - Waveshare ESP32-S3-ETH (W5500 PoE Ethernet)
-- Battery: Redodo Power 12.8V/100Ah LiFePO4 (model RH190), MAC
-  `xx:xx:xx:xx:xx:xx` (redacted)
+- Battery: Redodo Power 12.8V/100Ah LiFePO4 (model RH190), MAC in
+  `include/secrets.h` (gitignored)
 - MQTT broker at `192.168.24.213:1883`
 
 ## Verwendung
+
+Einmalig vor dem ersten Build:
+
+```sh
+cp include/secrets.h.example include/secrets.h
+# dann in include/secrets.h die echte BMS_MAC_ADDRESS eintragen
+```
+
+`include/secrets.h` ist gitignored und enthält die reale Batterie-MAC —
+wird nie committed.
 
 ```sh
 pio run -t upload

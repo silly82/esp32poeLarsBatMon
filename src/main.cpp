@@ -1,10 +1,10 @@
 // esp32poeLarsBatMon
 //
 // ESP32-S3 (Waveshare ESP32-S3-ETH) connects to the boat's battery BMS
-// ("R-12100BNNH19-C01278", MAC c8:47:80:70:44:d6 — a Redodo Power 12.8V
-// 100Ah LiFePO4 pack) over BLE GATT, decodes pack voltage/current/SoC/
-// cell voltages/temperatures, and publishes them over PoE Ethernet via
-// MQTT.
+// (a Redodo Power 12.8V 100Ah LiFePO4 pack, MAC in include/secrets.h,
+// gitignored - see secrets.h.example) over BLE GATT, decodes pack
+// voltage/current/SoC/cell voltages/temperatures, and publishes them
+// over PoE Ethernet via MQTT.
 //
 // Protocol: LiTime/Redodo/PowerQueen family (NOT JBD/Xiaoxiang DD-A5,
 // despite sharing the same 0xFFE0/0xFFE1/0xFFE2 GATT layout - confirmed
@@ -52,6 +52,7 @@
 #include <BLERemoteService.h>
 #include <BLERemoteCharacteristic.h>
 #include <cstring>
+#include "secrets.h"  // gitignored; copy from secrets.h.example and fill in BMS_MAC_ADDRESS
 
 // Waveshare ESP32-S3-ETH: W5500 Ethernet over SPI.
 #define ETH_PHY_TYPE ETH_PHY_W5500
@@ -77,7 +78,7 @@ static NetworkClient netClient;
 static PubSubClient mqttClient(netClient);
 
 // --- BMS connection (LiTime/Redodo protocol over BLE) ---
-static const char *BMS_MAC = "c8:47:80:70:44:d6";
+static const char *BMS_MAC = BMS_MAC_ADDRESS;
 static const uint16_t BMS_SERVICE_UUID = 0xFFE0;
 static const uint16_t BMS_NOTIFY_CHAR_UUID = 0xFFE1;
 static const uint16_t BMS_WRITE_CHAR_UUID = 0xFFE2;
