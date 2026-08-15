@@ -8,11 +8,11 @@ and MQTT.
 
 - [x] Board: **Waveshare ESP32-S3-ETH** (ESP32-S3R8, 512KB SRAM, 16MB Flash,
       8MB Octal PSRAM, WiFi/BLE 5, native USB-Serial/JTAG). MAC:
-      `xx:xx:xx:xx:xx:xx`, connected via `/dev/cu.usbmodem101`. W5500
+      `xx:xx:xx:xx:xx:xx` (redacted), connected via `/dev/cu.usbmodem101`. W5500
       Ethernet over SPI: CLK=13 MISO=12 MOSI=11 CS=14 IRQ=10 RST=9. PoE via
       optional 802.3af module on the board.
 - [x] Battery: **Redodo Power** 12.8V/100Ah LiFePO4, model RH190, alias
-      "R-12100BNNH19-C01278", MAC `xx:xx:xx:xx:xx:xx`. BLE GATT service
+      "R-12100BNNH19-C01278", MAC `xx:xx:xx:xx:xx:xx` (redacted). BLE GATT service
       `0xFFE0`, notify on `0xFFE1`, write on `0xFFE2`.
 - [x] Ethernet (W5500) + MQTT (PubSubClient) working end-to-end. Retained
       heartbeat on `LiFePo01/status` (IP, uptime, free heap,
@@ -109,7 +109,7 @@ shell (needs a real TTY) — use a plain `pyserial` read loop instead, or run
 
 - Waveshare ESP32-S3-ETH (W5500 PoE Ethernet)
 - Battery: Redodo Power 12.8V/100Ah LiFePO4 (model RH190), MAC
-  `xx:xx:xx:xx:xx:xx`
+  `xx:xx:xx:xx:xx:xx` (redacted)
 - MQTT broker at `192.168.24.213:1883`
 
 ## Verwendung
