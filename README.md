@@ -39,6 +39,11 @@ and MQTT.
       battery service on the D-Bus, visible in VRM and on the GX display.
       Setup: Settings → Node-RED (needs Venus OS Large, already installed)
       → open `https://<venus-ip>:1881/` → Import the flow → Deploy.
+      **Confirmed live on the GX device's Battery detail page**: SoC
+      90.0%, 13.3V, 4.4A discharging, 58.0W, 31.0°C, min/max cell voltage
+      3.320V/3.322V, remaining time 21h45m — matches the ESP32's own
+      remaining-capacity/current numbers (96.6Ah / 4.4A ≈ 21h57m) closely
+      enough to confirm `TimeToGo` is being computed and read correctly.
 - [x] **BMS protocol solved.** It's *not* JBD/Xiaoxiang (that command set
       got zero response, even with a fully working GATT connection) —
       Redodo/LiTime/PowerQueen share a BMS OEM and use their own frame
@@ -129,10 +134,20 @@ Victron/Node-RED-Flow zum Import: `node-red/lifepo01-victron-flow.json`
 
 Batteriemonitor für das Boot "Lars": ein ESP32-S3 (Waveshare ESP32-S3-ETH)
 liest Batteriedaten von der BLE-Batterie (Redodo Power 12.8V/100Ah LiFePO4)
-aus und stellt sie übers Netzwerk per PoE-Ethernet via MQTT bereit. Läuft
-End-to-End: Ethernet, MQTT und das BMS-Protokoll sind alle funktionsfähig
-und liefern live plausible Werte. Das ursprünglich vermutete
-JBD-Standardprotokoll war eine Sackgasse; des Rätsels Lösung war, die
-Batteriemarke (Redodo) vom Typenschild abzulesen und danach zu suchen —
+aus und stellt sie übers Netzwerk per PoE-Ethernet via MQTT bereit, von wo
+sie per Node-RED-Flow in Victrons D-Bus eingespeist werden und als echte
+virtuelle Batterie in VRM und am GX-Display erscheinen.
+
+Läuft vollständig End-to-End und ist live am GX-Display bestätigt: Ethernet,
+MQTT, das BMS-Protokoll und die Victron-Integration funktionieren alle und
+liefern plausible, konsistente Werte (SoC, Spannung, Strom, Leistung,
+Temperatur, Zellspannungen, geschätzte Restlaufzeit). Das ursprünglich
+vermutete JBD-Standardprotokoll war eine Sackgasse; des Rätsels Lösung war,
+die Batteriemarke (Redodo) vom Typenschild abzulesen und danach zu suchen —
 für diese Marke (gemeinsam mit LiTime/PowerQueen) existiert bereits offen
-dokumentierter, funktionierender Code.
+dokumentierter, funktionierender Code. Unterwegs kamen noch zwei subtile
+Bugs dazu: ein BLE-Scanner-Crash durch ein flutendes Nachbargerät (behoben
+mit `setDuplicateFilter(true)`) und ein stiller MQTT-Publish-Fehlschlag
+durch einen PubSubClient-Puffer, der trotz `#define` bei den
+Default-256-Bytes blieb (behoben mit `setBufferSize()`/`setKeepAlive()`
+zur Laufzeit).
