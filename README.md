@@ -15,8 +15,19 @@ and MQTT.
       "R-12100BNNH19-C01278", MAC `xx:xx:xx:xx:xx:xx`. BLE GATT service
       `0xFFE0`, notify on `0xFFE1`, write on `0xFFE2`.
 - [x] Ethernet (W5500) + MQTT (PubSubClient) working end-to-end. Retained
-      heartbeat on `esp32poeLarsBatMon/status` (IP, uptime, free heap,
-      `bms_connected`). Broker `192.168.24.213:1883`, no auth.
+      heartbeat on `LiFePo01/status` (IP, uptime, free heap,
+      `bms_connected`). Broker `192.168.24.213:1883` (the Cerbo/Venus GX's
+      own MQTT broker), no auth.
+- [x] **Victron integration via Node-RED**, running on the Cerbo/Venus GX
+      itself. `node-red/lifepo01-victron-flow.json` (importable flow):
+      two MQTT-in nodes (`LiFePo01/battery`, `LiFePo01/battery/cells`) →
+      function node mapping to Victron D-Bus paths (`Dc/0/Voltage`,
+      `Dc/0/Current`, `Dc/0/Power`, `Soc`, `Soh`, `Dc/0/Temperature`,
+      `Capacity`, `System/Min-/MaxCellVoltage`) → a `victron-virtual` node
+      (device type "battery", 100Ah/12V) that creates a real virtual
+      battery service on the D-Bus, visible in VRM and on the GX display.
+      Setup: Settings → Node-RED (needs Venus OS Large, already installed)
+      → open `https://<venus-ip>:1881/` → Import the flow → Deploy.
 - [x] **BMS protocol solved.** It's *not* JBD/Xiaoxiang (that command set
       got zero response, even with a fully working GATT connection) —
       Redodo/LiTime/PowerQueen share a BMS OEM and use their own frame
@@ -96,9 +107,12 @@ Serial-Ausgabe lesen (im nicht-interaktiven Terminal funktioniert
 benutzen oder `pio device monitor` in einem echten Terminal starten).
 
 MQTT-Topics:
-- `esp32poeLarsBatMon/status` — Heartbeat (retained)
-- `esp32poeLarsBatMon/battery` — Spannung/Strom/SoC/Kapazität/... (retained)
-- `esp32poeLarsBatMon/battery/cells` — Einzelzellspannungen als Array (retained)
+- `LiFePo01/status` — Heartbeat (retained)
+- `LiFePo01/battery` — Spannung/Strom/SoC/Kapazität/... (retained)
+- `LiFePo01/battery/cells` — Einzelzellspannungen als Array (retained)
+
+Victron/Node-RED-Flow zum Import: `node-red/lifepo01-victron-flow.json`
+(Details siehe Status oben).
 
 ## Deutsch
 

@@ -68,9 +68,9 @@
 static const char *MQTT_HOST = "192.168.24.213";
 static const uint16_t MQTT_PORT = 1883;
 static const char *MQTT_CLIENT_ID = "esp32poeLarsBatMon";
-static const char *TOPIC_STATUS = "esp32poeLarsBatMon/status";
-static const char *TOPIC_BATTERY = "esp32poeLarsBatMon/battery";
-static const char *TOPIC_BATTERY_CELLS = "esp32poeLarsBatMon/battery/cells";
+static const char *TOPIC_STATUS = "LiFePo01/status";
+static const char *TOPIC_BATTERY = "LiFePo01/battery";
+static const char *TOPIC_BATTERY_CELLS = "LiFePo01/battery/cells";
 
 static const uint32_t MQTT_RECONNECT_INTERVAL_MS = 5000;
 
