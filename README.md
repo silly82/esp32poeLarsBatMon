@@ -23,7 +23,9 @@ and MQTT.
       two MQTT-in nodes (`LiFePo01/battery`, `LiFePo01/battery/cells`) →
       function node mapping to Victron D-Bus paths (`Dc/0/Voltage`,
       `Dc/0/Current`, `Dc/0/Power`, `Soc`, `Soh`, `Dc/0/Temperature`,
-      `Capacity`, `System/Min-/MaxCellVoltage`) → a `victron-virtual` node
+      `Capacity`, `TimeToGo` — estimated seconds until empty at the
+      current discharge rate, capped at 10 days — `System/Min-/
+      MaxCellVoltage`) → a `victron-virtual` node
       (device type "battery", 100Ah/12V) that creates a real virtual
       battery service on the D-Bus, visible in VRM and on the GX display.
       Setup: Settings → Node-RED (needs Venus OS Large, already installed)
