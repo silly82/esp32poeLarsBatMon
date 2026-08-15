@@ -150,9 +150,6 @@ Alles hier ist optional — die Grundfunktion läuft bereits vollständig.
       unter Realbedingungen getestet (nur MQTT- und BLE-Reconnect sind es).
       Watchdog-Timer (`esp_task_wdt`) wäre sinnvoll, falls die Firmware mal
       in einem der BLE-Wartezustände hängen bleibt.
-- [ ] **Home Assistant zusätzlich zu Victron.** Die MQTT-Topics sind bereits
-      generisch genug, um zusätzlich per HA-MQTT-Discovery eingebunden zu
-      werden, unabhängig von der Victron/Node-RED-Anbindung.
 
 ## Hardware
 
