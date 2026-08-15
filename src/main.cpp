@@ -43,8 +43,6 @@
 #include <Arduino.h>
 #include <ETH.h>
 #include <SPI.h>
-#define MQTT_MAX_PACKET_SIZE 2048
-#define MQTT_KEEPALIVE 60
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <BLEDevice.h>
@@ -296,10 +294,13 @@ void pollAndPublishStatus() {
   parseStatus(doc);
   String out;
   serializeJson(doc, out);
-  Serial.printf("BMS status: %s\n", out.c_str());
+  Serial.printf("BMS status (%u bytes): %s\n", (unsigned)out.length(), out.c_str());
   if (mqttClient.connected()) {
-    mqttClient.publish(TOPIC_BATTERY, out.c_str(), true);
+    bool ok = mqttClient.publish(TOPIC_BATTERY, out.c_str(), true);
+    Serial.printf("MQTT publish %s: %s\n", TOPIC_BATTERY, ok ? "ok" : "FAILED");
   }
+  mqttClient.loop();
+  delay(50);  // let the TCP stack flush the first publish before the next one
 
   JsonDocument cellsDoc;
   JsonArray cells = cellsDoc.to<JsonArray>();
@@ -308,7 +309,8 @@ void pollAndPublishStatus() {
   serializeJson(cellsDoc, cellsOut);
   Serial.printf("BMS cell voltages: %s\n", cellsOut.c_str());
   if (mqttClient.connected()) {
-    mqttClient.publish(TOPIC_BATTERY_CELLS, cellsOut.c_str(), true);
+    bool ok = mqttClient.publish(TOPIC_BATTERY_CELLS, cellsOut.c_str(), true);
+    Serial.printf("MQTT publish %s: %s\n", TOPIC_BATTERY_CELLS, ok ? "ok" : "FAILED");
   }
 }
 
@@ -374,6 +376,13 @@ void setup() {
   ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, SPI);
 
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  // #define MQTT_MAX_PACKET_SIZE/MQTT_KEEPALIVE before #include only
+  // affects this translation unit, not PubSubClient's own separately-
+  // compiled .cpp - the defaults (256 byte buffer, 15s keepalive) stayed
+  // in effect regardless. Use the runtime setters instead.
+  mqttClient.setBufferSize(2048);
+  mqttClient.setKeepAlive(60);
+  Serial.printf("MQTT buffer size: %u\n", mqttClient.getBufferSize());
 
   BLEDevice::init("esp32poeLarsBatMon");
   BLEScan *scan = BLEDevice::getScan();

@@ -18,6 +18,15 @@ and MQTT.
       heartbeat on `LiFePo01/status` (IP, uptime, free heap,
       `bms_connected`). Broker `192.168.24.213:1883` (the Cerbo/Venus GX's
       own MQTT broker), no auth.
+      **Gotcha fixed**: `#define MQTT_MAX_PACKET_SIZE`/`MQTT_KEEPALIVE`
+      before `#include <PubSubClient.h>` only takes effect in this one
+      `.cpp` file, not PubSubClient's own separately-compiled source - the
+      library silently kept its 256-byte default buffer regardless,
+      so the larger `LiFePo01/battery` payload (with `raw_hex`, ~600
+      bytes) failed to publish every time while the small `.../cells`
+      payload kept working, easy to miss since `publish()`'s return value
+      wasn't being checked. Fixed with the runtime
+      `setBufferSize(2048)`/`setKeepAlive(60)` calls in `setup()` instead.
 - [x] **Victron integration via Node-RED**, running on the Cerbo/Venus GX
       itself. `node-red/lifepo01-victron-flow.json` (importable flow):
       two MQTT-in nodes (`LiFePo01/battery`, `LiFePo01/battery/cells`) →
