@@ -258,6 +258,18 @@ void parseStatus(JsonDocument &doc) {
   doc["soh_percent"] = readU16LE(d, 92);
   doc["discharge_cycles"] = readU32LE(d, 96);
   doc["total_discharge_ah"] = readU32LE(d, 100) / 1000.0f;
+
+  // Full raw frame alongside the decoded fields above, so nothing is lost
+  // even from the byte ranges we don't currently interpret (e.g. 0-11,
+  // 56-61, 66-75, 94-95 are unused gaps in the known offset table).
+  String hex;
+  hex.reserve(bmsBufLen * 2);
+  char byteBuf[3];
+  for (size_t i = 0; i < bmsBufLen; i++) {
+    snprintf(byteBuf, sizeof(byteBuf), "%02X", d[i]);
+    hex += byteBuf;
+  }
+  doc["raw_hex"] = hex;
 }
 
 void parseCellVoltages(JsonArray &cells) {
