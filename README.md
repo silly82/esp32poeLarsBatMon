@@ -1,38 +1,67 @@
 # esp32poeLarsBatMon
 
 Battery monitor for the boat "Lars": an ESP32-S3 reads battery data from a
-Bluetooth (BLE) BMS and makes it available over the network via PoE Ethernet.
+Bluetooth (BLE) BMS and makes it available over the network via PoE Ethernet
+and MQTT.
 
-## Status
+## Status — working end-to-end
 
-- [x] Board identified: **Waveshare ESP32-S3-ETH** (ESP32-S3R8, 512KB SRAM,
-      16MB Flash, 8MB Octal PSRAM, WiFi/BLE 5, native USB-Serial/JTAG).
-      MAC: `xx:xx:xx:xx:xx:xx`. Connected via `/dev/cu.usbmodem101`.
-      W5500 Ethernet over SPI: CLK=13 MISO=12 MOSI=11 CS=14 IRQ=10 RST=9.
-      PoE via optional 802.3af module on the board.
-- [x] Phase 1: BLE scanner (`src/main.cpp`) — builds, flashes, and runs.
-      Lists nearby BLE devices with name, RSSI, manufacturer data and
-      service UUIDs, to identify the BMS.
-- [ ] BMS not yet located in a scan — battery ("12100BNNH19-C01278", SN
-      `BDRG12100-BNN-C4H0206H-H19R`, FW 2.0.0) needs to be in BLE range
-      (few meters) during the scan. Likely uses the common JBD/Xiaoxiang
-      BMS-over-BLE protocol (typical for rebranded Chinese LiFePO4 packs
-      with a generic monitoring app) — to be confirmed once found.
-- [ ] Phase 2: identify the BMS's BLE advertisement/GATT service and decode
-      voltage/current/SoC.
-- [x] Phase 3 (plumbing): Ethernet (W5500 over SPI) + MQTT (PubSubClient)
-      added. Publishes a retained heartbeat to `esp32poeLarsBatMon/status`
-      and raw BLE scan hits (MAC/RSSI/name/manufacturer data, capped at 15
-      per scan) as JSON to `esp32poeLarsBatMon/ble/scan`, so the BMS can be
-      spotted from the MQTT log once it's in range. Broker:
-      `192.168.24.213:1883`, no auth, not yet reachable/tested end-to-end
-      (board currently bench-powered over USB only, no PoE link up).
-      Still pending: replace the raw-scan dump with actual decoded BMS
-      values once Phase 2 is done.
+- [x] Board: **Waveshare ESP32-S3-ETH** (ESP32-S3R8, 512KB SRAM, 16MB Flash,
+      8MB Octal PSRAM, WiFi/BLE 5, native USB-Serial/JTAG). MAC:
+      `xx:xx:xx:xx:xx:xx`, connected via `/dev/cu.usbmodem101`. W5500
+      Ethernet over SPI: CLK=13 MISO=12 MOSI=11 CS=14 IRQ=10 RST=9. PoE via
+      optional 802.3af module on the board.
+- [x] Battery: **Redodo Power** 12.8V/100Ah LiFePO4, model RH190, alias
+      "R-12100BNNH19-C01278", MAC `xx:xx:xx:xx:xx:xx`. BLE GATT service
+      `0xFFE0`, notify on `0xFFE1`, write on `0xFFE2`.
+- [x] Ethernet (W5500) + MQTT (PubSubClient) working end-to-end. Retained
+      heartbeat on `esp32poeLarsBatMon/status` (IP, uptime, free heap,
+      `bms_connected`). Broker `192.168.24.213:1883`, no auth.
+- [x] **BMS protocol solved.** It's *not* JBD/Xiaoxiang (that command set
+      got zero response, even with a fully working GATT connection) —
+      Redodo/LiTime/PowerQueen share a BMS OEM and use their own frame
+      format on the same `0xFFE0/1/2` layout. Confirmed and implemented
+      against the real, working open-source references:
+      - https://github.com/rubenmuehlhans/litime-ble-hacs (Home Assistant
+        integration, protocol details taken from `coordinator.py`/`const.py`)
+      - https://github.com/va13ak/esp_redodo_bms (ESPHome, cross-check)
+
+      Command frame (8 bytes, written to `0xFFE2`):
+      `{0x00, 0x00, 0x04, 0x01, CMD, 0x55, 0xAA, CHECKSUM}`,
+      `CHECKSUM = (0x04 + CMD) & 0xFF`. `CMD_QUERY_STATUS = 0x13`.
+      Status response notifies on `0xFFE1`, little-endian, may arrive
+      fragmented (new frame starts when `byte[2] == 0x65`, reassemble until
+      ≥104 bytes). Byte offsets and other available commands (serial
+      number, firmware version, charge/discharge on/off, ...) are listed in
+      the header comment of `src/main.cpp`.
+  - Live-verified output, matching the vendor app (SOC 96%, 13.3V, -4.1A,
+        100.8Ah at 2026-08-15 20:40) closely enough to account for the time
+        elapsed between readings:
+        `{"total_voltage_v":13.291,"current_a":-4.369,"power_w":-58.07,
+        "soc_percent":92,"soh_percent":100,"remaining_capacity_ah":97.15,
+        "full_charge_capacity_ah":105,"cell_temperature_c":31,
+        "discharge_cycles":2,...}`, cell voltages
+        `[3.323,3.323,3.323,3.322]` (4S pack, 4×3.2V ≈ 12.8V nominal — checks out).
 - [x] Found and fixed a firmware crash: a nearby device flooding BLE
       advertisements at very high rate (Apple-continuity-style spam)
       overloaded the scan callback and corrupted serial output. Fixed with
       `scan->setDuplicateFilter(true)` in `setup()`.
+
+### How we got there (for future reference)
+
+The BMS's `0xFFE0/1/2/3` GATT layout is a generic UART-bridge pattern
+shared by many unrelated BMS protocol families, so having the right
+UUIDs is not enough — the JBD command set produced zero response despite
+a provably correct GATT connection (service/characteristics discovered,
+notify subscribed with peer ACK, writes ACKed). A full GATT dump also
+found an unrelated third-party service (`f000ffc0-0451-4000-b000-
+000000000000`, TI CC254x/SensorTag-style base UUID, chip is a Beken BLE
+SoC per its Device Information Service) that replies but only with a
+fixed handshake/error frame regardless of input — a dead end. What
+actually solved it: identifying the exact battery brand from a photo of
+its label (Redodo Power) and searching for existing open-source
+reverse-engineering of that brand's protocol, rather than continuing to
+guess bytes or capturing raw BLE traffic from the phone app.
 
 ### Known environment quirk (this machine)
 
@@ -51,25 +80,34 @@ shell (needs a real TTY) — use a plain `pyserial` read loop instead, or run
 
 ## Hardware
 
-- ESP32-S3, 8MB embedded PSRAM
-- BLE-based BMS (model not yet identified — run the Phase 1 scanner near the
-  battery to find it)
-- PoE for network connectivity (board TBD)
+- Waveshare ESP32-S3-ETH (W5500 PoE Ethernet)
+- Battery: Redodo Power 12.8V/100Ah LiFePO4 (model RH190), MAC
+  `xx:xx:xx:xx:xx:xx`
+- MQTT broker at `192.168.24.213:1883`
 
 ## Verwendung
 
 ```sh
 pio run -t upload
-pio device monitor
 ```
 
-Scanner läuft alle paar Sekunden neu und listet BLE-Geräte in der Nähe. Das
-BMS am Namen, an der MAC oder an den Manufacturer-Data-Bytes identifizieren.
+Serial-Ausgabe lesen (im nicht-interaktiven Terminal funktioniert
+`pio device monitor` nicht, siehe unten — stattdessen `pyserial` direkt
+benutzen oder `pio device monitor` in einem echten Terminal starten).
+
+MQTT-Topics:
+- `esp32poeLarsBatMon/status` — Heartbeat (retained)
+- `esp32poeLarsBatMon/battery` — Spannung/Strom/SoC/Kapazität/... (retained)
+- `esp32poeLarsBatMon/battery/cells` — Einzelzellspannungen als Array (retained)
 
 ## Deutsch
 
-Batteriemonitor für das Boot "Lars": ein ESP32-S3 liest Batteriedaten von
-einem Bluetooth-(BLE)-BMS aus und stellt sie übers Netzwerk per PoE-Ethernet
-bereit. Aktuell läuft Phase 1 (BLE-Scanner), um das genaue BMS-Modell und
-sein Advertisement-Format zu bestimmen — danach folgen Dekodierung und
-Ethernet/PoE-Anbindung.
+Batteriemonitor für das Boot "Lars": ein ESP32-S3 (Waveshare ESP32-S3-ETH)
+liest Batteriedaten von der BLE-Batterie (Redodo Power 12.8V/100Ah LiFePO4)
+aus und stellt sie übers Netzwerk per PoE-Ethernet via MQTT bereit. Läuft
+End-to-End: Ethernet, MQTT und das BMS-Protokoll sind alle funktionsfähig
+und liefern live plausible Werte. Das ursprünglich vermutete
+JBD-Standardprotokoll war eine Sackgasse; des Rätsels Lösung war, die
+Batteriemarke (Redodo) vom Typenschild abzulesen und danach zu suchen —
+für diese Marke (gemeinsam mit LiTime/PowerQueen) existiert bereits offen
+dokumentierter, funktionierender Code.
