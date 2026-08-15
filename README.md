@@ -106,6 +106,54 @@ running. `pio device monitor` also doesn't work from a non-interactive
 shell (needs a real TTY) — use a plain `pyserial` read loop instead, or run
 `pio device monitor` from an actual terminal.
 
+## TODO / mögliche Erweiterungen
+
+Alles hier ist optional — die Grundfunktion läuft bereits vollständig.
+
+- [ ] **Alarme statt nur Rohwerte.** `LiFePo01/battery` liefert bereits
+      `protection_flags`/`failure_flags` als rohe Bitmasken vom BMS, werden
+      aber weder decodiert noch als Victron-Alarme weitergereicht. Bekannte
+      Bits (aus `litime-ble-hacs`):
+      `0x04`=Overcharge, `0x20`=Over-discharge, `0x40`=Charge-Overcurrent,
+      `0x80`=Discharge-Overcurrent, `0x100`/`0x200`=High-Temp 1/2,
+      `0x400`/`0x800`=Low-Temp 1/2, `0x4000`=Short-Circuit. Im
+      Node-RED-Function-Node auf die passenden Victron-Pfade mappen:
+      `Alarms/HighVoltage`, `Alarms/LowVoltage`, `Alarms/HighChargeCurrent`,
+      `Alarms/HighDischargeCurrent`, `Alarms/HighTemperature`,
+      `Alarms/LowTemperature`, `Alarms/InternalFailure` (jeweils 0/1).
+      Zusätzlich rein schwellwertbasiert (nicht vom BMS, selbst
+      berechnen): `Alarms/LowSoc` (z.B. `soc_percent < 20`),
+      `Alarms/CellImbalance` (z.B. `max-min Zellspannung > 0.05V`).
+- [ ] **Seriennummer & Firmware-Version auslesen.** Bekannte, aber noch
+      nicht implementierte Kommandos (gleiches 8-Byte-Frame-Schema,
+      `CMD_SERIAL_NUMBER = 0x10`, `CMD_FIRMWARE_VERSION = 0x16`) —
+      Antwortformat unbekannt, müsste am echten Gerät verifiziert werden
+      wie beim Status-Frame. Nice-to-have für Debug-Zwecke/Asset-Tracking,
+      kein Victron-D-Bus-Pfad dafür vorgesehen (könnte höchstens in
+      `CustomName` o.ä. landen).
+- [ ] **DVCC: Ladegerät folgt den BMS-Limits.** Aktuell ist unsere virtuelle
+      Batterie reines Monitoring, sie steuert das Ladegerät nicht. Um das
+      Ladegerät die vom BMS gemeldeten Grenzwerte übernehmen zu lassen,
+      zusätzlich `Info/MaxChargeVoltage`, `Info/MaxChargeCurrent`,
+      `Info/MaxDischargeCurrent`, `Info/BatteryLowVoltage` aus den
+      Batteriewerten (bzw. Typenschild-Werten) setzen, plus DVCC in den
+      Venus-OS-Systemeinstellungen aktivieren. Grösserer Umbau, siehe
+      frühere Diskussion im Chat-Verlauf.
+- [ ] **Lade-/Entladesteuerung (FET-Control) aus der Ferne.** BMS
+      unterstützt laut `litime-ble-hacs` auch Schreibkommandos
+      `CMD_CHARGE_ON/OFF = 0x0A/0x0B`, `CMD_DISCHARGE_ON/OFF = 0x0C/0x0D`.
+      Könnte man z.B. über ein zusätzliches MQTT-Topic
+      (`LiFePo01/battery/set`) fernsteuerbar machen — sicherheitsrelevant,
+      also mit Bedacht implementieren (z.B. nur Discharge-Off als
+      Notausschalter, nicht beides).
+- [ ] **Robustheit:** ETH-Reconnect nach Kabel-/Switch-Ausfall noch nicht
+      unter Realbedingungen getestet (nur MQTT- und BLE-Reconnect sind es).
+      Watchdog-Timer (`esp_task_wdt`) wäre sinnvoll, falls die Firmware mal
+      in einem der BLE-Wartezustände hängen bleibt.
+- [ ] **Home Assistant zusätzlich zu Victron.** Die MQTT-Topics sind bereits
+      generisch genug, um zusätzlich per HA-MQTT-Discovery eingebunden zu
+      werden, unabhängig von der Victron/Node-RED-Anbindung.
+
 ## Hardware
 
 - Waveshare ESP32-S3-ETH (W5500 PoE Ethernet)
